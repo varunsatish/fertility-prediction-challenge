@@ -6,6 +6,7 @@
 # It is important to document your training steps here, including seed, 
 # number of folds, model, et cetera
 
+library(tidyr)
 
 train_save_model <- function(cleaned_df, outcome_df) {
   # Trains a model using the cleaned dataframe and saves the model to a file.
@@ -27,7 +28,11 @@ train_save_model <- function(cleaned_df, outcome_df) {
   # Logistic regression model
   #model <- glm(new_child ~ age, family = "binomial", data = model_df)
   
-  model_fit <- train(as.factor(new_child) ~ age_2020 + age_2020_2, 
+  model_fit <- train(as.factor(new_child) ~ gender + age_2020 + age_2020_2 + 
+                       ethnic + housing_2020 + log_houseincome_2020 + partner_2020 + 
+                       childnum_2020 + child_value + childintention_2020 + urban_2020 + 
+                       edu_2020 + religious_2020 + edu_health_sector_2020 + health + 
+                       smoking_2020 + family_security_2020, 
                      data = model_df, 
                      method = "glm",
                      family = "binomial")

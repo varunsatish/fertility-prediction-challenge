@@ -16,6 +16,8 @@
 # List your packages here. Don't forget to update packages.R!
 library(dplyr) # as an example, not used here
 library(caret)
+library(tidyverse)
+
 
 clean_df <- function(df, background_df = NULL){
   # Preprocess the input dataframe to feed the model.
@@ -136,6 +138,59 @@ clean_df <- function(df, background_df = NULL){
       cf20m025 == 1 ~ "1. live together",
       cf20m025 == 2|cf20m024 == 2 ~ "0. not live together"
     ))
+  
+  
+  df <- df %>%
+    mutate(urban_2020 = sted_2020)
+  
+  summary(df$urban_2020)
+  
+  #new education variable (9 categories)
+  df <- df %>%
+    mutate(edu_2020 = oplcat_2020)
+  
+  summary(df$edu_2020)
+  
+  # religion
+  df <- df %>%
+    mutate(religious_2020 = cr20m041)
+  
+  summary(df$religious_2020)
+  
+  # sector: "education" and "healthcare and welfare"
+  summary(df$cw20m402)
+  table(df$cw20m402)
+  
+  df <- df %>%
+    mutate(edu_health_sector_2020 = case_when(
+      cw20m402 == 12 | cw20m402 == 13 ~ "1.education and healthcare",
+      (cw20m402 >= 1 & cw20m402 <=11) | (cw20m402 >= 14 & cw20m402 <=15) ~ "0. other sector"
+    ))
+  
+  table(df$edu_health_sector_2020)
+  
+  # general health
+  summary(df$ch20m004)
+  df <- df %>%
+    mutate(health = ch20m004)
+  
+  summary(df$health)
+  
+  # smoke: do you smoke now?
+  summary(df$ch20m126)
+  df <- df %>%
+    mutate(smoking_2020 = case_when(
+      ch20m125 == 2 ~ "1.never smoke",
+      ch20m126 == 1 ~ "2.smoke now",
+      ch20m126 == 2 ~ "3.stop smoking"
+    ))
+  table (df$smoking_2020)
+  
+  # family security (scale 1-7 extremely important)
+  df <- df %>%
+    mutate(family_security_2020 = cp20l118)
+  
+  summary(df$family_security_2020)
   
   # turning to -99 for now. In the future we will need to create dummies 
   df <- df %>%

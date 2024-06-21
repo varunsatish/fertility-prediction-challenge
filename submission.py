@@ -19,6 +19,10 @@ run.py can be used to test your submission.
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 import joblib
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LogisticRegression
 
 
 def clean_df(df, background_df=None):
@@ -38,17 +42,22 @@ def clean_df(df, background_df=None):
     # Create new variable with age
     df["age"] = 2024 - df["birthyear_bg"]
 
-    # Imputing missing values in age with the mean
-    df["age"] = df["age"].fillna(df["age"].mean())
-
     # Selecting variables for modelling
-    keepcols = [
-        "nomem_encr",  # ID variable required for predictions,
-        "age"          # newly created variable
-    ] 
+    features_to_select = [
+        "age",
+        "cf20m128", 
+        "oplzon_2020", 
+        "nettohh_f_2020", 
+        "nomem_encr"
+        ]
+    
+    # Imputing missing values with the mean. The categorical ones are all background which should 
+    # not be missing
+    df["age"] = df["age"].fillna(df["age"].mean())
+    df["nettohh_f_2020"].fillna(df["nettohh_f_2020"].mean())
 
     # Keeping data with variables selected
-    df = df[keepcols]
+    df = df[features_to_select]
 
     return df
 

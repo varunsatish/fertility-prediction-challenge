@@ -24,9 +24,9 @@ parser = argparse.ArgumentParser(description="Process data.")
 
 parser.add_argument("data_path", help="Path to data data CSV file.")
 parser.add_argument(
-    "background_data_path", help="Path to background data data CSV file."
+    "background_data_path", help=""
 )
-parser.add_argument("--output", help="Path to prediction output CSV file.")
+parser.add_argument("--output", help="")
 
 args = parser.parse_args()
 

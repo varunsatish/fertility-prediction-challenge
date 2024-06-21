@@ -6,6 +6,7 @@
 # It is important to document your training steps here, including seed, 
 # number of folds, model, et cetera
 
+
 train_save_model <- function(cleaned_df, outcome_df) {
   # Trains a model using the cleaned dataframe and saves the model to a file.
 
@@ -14,14 +15,42 @@ train_save_model <- function(cleaned_df, outcome_df) {
   # outcome_df (dataframe): The data with the outcome variable (e.g., from PreFer_train_outcome.csv or PreFer_fake_outcome.csv).
 
   ## This script contains a bare minimum working example
-  set.seed(1) # not useful here because logistic regression deterministic
+  #set.seed(1) # not useful here because logistic regression deterministic
   
   # Combine cleaned_df and outcome_df
   model_df <- merge(cleaned_df, outcome_df, by = "nomem_encr")
   
-  # Logistic regression model
-  model <- glm(new_child ~ age, family = "binomial", data = model_df)
+  # training model on complete cases
+  model_df <- model_df %>%
+    filter(complete.cases(.))
   
+  # Logistic regression model
+  #model <- glm(new_child ~ age, family = "binomial", data = model_df)
+  
+  model_fit <- train(as.factor(new_child) ~ age_2020 + age_2020_2, 
+                     data = model_df, 
+                     method = "glm",
+                     family = "binomial")
   # Save the model
-  saveRDS(model, "model.rds")
+  saveRDS(model_fit, file = "model.rds")
+
+  
+  print("Model successfully saved as model.rds!")
+  
 }
+
+# getting the cleaning function from submission.R
+
+source("submission.R")
+
+# reading the real LISS data that was downloaded from Next
+
+original_df <- read_csv("../data_DO_NOT_UPLOAD/PreFer_train_data.csv")
+
+cleaned_df <- clean_df(original_df)
+
+outcome_df <- read_csv("../data_DO_NOT_UPLOAD/PreFer_train_outcome.csv")
+
+train_save_model(cleaned_df, outcome_df)
+
+

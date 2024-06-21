@@ -15,6 +15,7 @@
 
 # List your packages here. Don't forget to update packages.R!
 library(dplyr) # as an example, not used here
+library(caret)
 
 clean_df <- function(df, background_df = NULL){
   # Preprocess the input dataframe to feed the model.
@@ -29,16 +30,117 @@ clean_df <- function(df, background_df = NULL){
 
   ## This script contains a bare minimum working example
   # Create new age variable
-  df$age <- 2024 - df$birthyear_bg
+  #df$age <- 2024 - df$birthyear_bg
 
   # Selecting variables for modelling
 
-  keepcols = c('nomem_encr', # ID variable required for predictions,
-               'age')        # newly created variable
+  #keepcols = c('nomem_encr', # ID variable required for predictions,
+  #             'age')        # newly created variable
   
   ## Keeping data with variables selected
-  df <- df[ , keepcols ]
-
+  #df <- df[ , keepcols ]
+  
+  
+  # copied from Flora's code 21st June
+  
+  # Variable: gender
+  
+  df <- df %>%
+    mutate(gender = recode(gender_bg, 
+                           "1" = "Male",
+                           "2" = "Female"))
+  
+  # Variable: migration background
+  df <- df %>% 
+    mutate(ethnic = recode(migration_background_bg,
+                           "0" = "Dutch background",
+                           "101" = "First generation foreign, Western background",
+                           "102" = "First generation foreign, non-western background",
+                           "201" = "Second generation foreign, Western background",
+                           "202" = "Second generation foreign, non-western background"))
+  
+  # Variable: age & age^2
+  
+  df <- df %>% 
+    mutate(age_2020 = age_bg,
+           age_2020_2 = age_bg**2)
+  
+  
+  # Variable: highedu_2020
+  # whether respondents had a high education (hbo / wo) or not in 2020
+  
+  df <- df %>% 
+    mutate(highedu_2020 = case_when(
+      oplmet_2020 == 5 | oplmet_2020 == 6 ~ "1.high edu",
+      (oplmet_2020 >= 1 & oplmet_2020 <=4) | (oplmet_2020 >= 7 & oplmet_2020 <= 9) ~ "0.no high edu"))
+  
+  # Variable: woonvorm_2020
+  
+  df <- df %>% 
+    mutate(living_arr_2020 = recode(woonvorm_2020,
+                                    "1" = "0.single",
+                                    "2" = "1.(un)married co-habitation, without child(ren)",
+                                    "3" = "2.(un)married co-habitation, with child(ren)",
+                                    "4" = "3.single, with child(ren)",
+                                    "5" = "4.other"))
+  
+  # Variable: housing situation
+  
+  df <- df %>% 
+    mutate(housing_2020 = recode(woning_2020,
+                                 "1" = "0.self-own dwelling",
+                                 "2" = "1.rental dwelling",
+                                 "4" = "missing"))
+  
+  df <- df %>% 
+    mutate(housing_2020 = na_if(housing_2020, "missing"))
+  
+  # Variable: net household income in 2020
+  df <- df %>% 
+    mutate(log_houseincome_2020 = log(nettohh_f_2020 + 1))
+  
+  
+  # Variable: whether has a partner in 2020 
+  
+  df <- df %>% 
+    mutate(partner_2020 = case_when(
+      cf20m024 == 1 ~ "1. have a partner",
+      cf20m024 == 2 ~ "0. no partner"))
+  
+  
+  # Variable: the number of children you had in 2020 
+  
+  df <- df %>% 
+    mutate(childnum_2020 = case_when(
+      cf20m454 == 2 ~ "no child",
+      cf20m455 == 1 ~ "one child",
+      cf20m455 >= 2 & cf20m455 <=5 ~ "two children or more"))
+  
+  # Variable: People that want to have children should get married. Higher scores indicate higher degrees of agreement
+  
+  df <- df %>% 
+    mutate(child_value = cv20l125)
+  
+  # Variable: Do you think you will have [more] children in the future?
+  
+  df <- df %>%
+    mutate(childintention_2020 = case_when(
+      cf20m128 == 1 ~ "Yes",
+      cf20m128 == 2 ~ "No",
+      cf20m128 == 3 ~ "I don't know"))
+  
+  # Variable: Do you live together with this partner? Flora: this variable is not significant, so I didn't add it in the model
+  
+  df <- df %>%
+    mutate(livetogether = case_when(
+      cf20m025 == 1 ~ "1. live together",
+      cf20m025 == 2|cf20m024 == 2 ~ "0. not live together"
+    ))
+  
+  # turning to -99 for now. In the future we will need to create dummies 
+  df <- df %>%
+    mutate_all(~ ifelse(is.na(.), -99, .))
+  
   return(df)
 }
 
@@ -66,7 +168,7 @@ predict_outcomes <- function(df, background_df = NULL, model_path = "./model.rds
   if( !("nomem_encr" %in% colnames(df)) ) {
     warning("The identifier variable 'nomem_encr' should be in the dataset")
   }
-
+  
   # Load the model
   model <- readRDS(model_path)
     
@@ -77,12 +179,15 @@ predict_outcomes <- function(df, background_df = NULL, model_path = "./model.rds
   vars_without_id <- colnames(df)[colnames(df) != "nomem_encr"]
   
   # Generate predictions from model
+  #predictions <- predict(model, 
+  #                       subset(df, select = vars_without_id), 
+  #                       type = "response") 
+  
   predictions <- predict(model, 
-                         subset(df, select = vars_without_id), 
-                         type = "response") 
+                         subset(df, select = vars_without_id)) 
   
   # Create predictions that should be 0s and 1s rather than, e.g., probabilities
-  predictions <- ifelse(predictions > 0.5, 1, 0)  
+  #predictions <- ifelse(predictions > 0.5, 1, 0)  
   
   # Output file should be data.frame with two columns, nomem_encr and predictions
   df_predict <- data.frame("nomem_encr" = df[ , "nomem_encr" ], "prediction" = predictions)
@@ -90,5 +195,5 @@ predict_outcomes <- function(df, background_df = NULL, model_path = "./model.rds
   names(df_predict) <- c("nomem_encr", "prediction") 
   
   # Return only dataset with predictions and identifier
-  return( df_predict )
+  return(df_predict )
 }
